@@ -14,8 +14,8 @@ class AddColumnsToUsersTable extends Migration
     public function up()
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('facebook_id')->nullable();
-            $table->string('token')->nullable();
+            $table->string('facebook_id')->nullable()->after('remember_token');
+            $table->string('access_token',1000)->nullable()->after('facebook_id');
         });
     }
 

@@ -1,19 +1,16 @@
 <?php
 
-use Illuminate\Http\Request;
+use App\Http\Controllers\Api\MediaController;
+use App\Http\Controllers\Api\SocialController;
 use Illuminate\Support\Facades\Route;
 
-/*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| is assigned the "api" middleware group. Enjoy building your API!
-|
-*/
+Route::get('/auth/facebook/redirect',[SocialController::class, 'redirect'])->name('facebook.redirect');
+Route::get('/auth/facebook/user',[SocialController::class, 'callbackUrl'])->name('facebook.callback');
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+Route::middleware('auth:api')->group(function () {
+  Route::get('/logout',[SocialController::class,'logout']);
+
+  Route::post('/upload-video',[MediaController::class, 'uploadVideo']);
+  Route::get('reels', [MediaController::class, 'reels']);
+  Route::get('reel/{id}/post', [MediaController::class, 'postReel']);
 });
