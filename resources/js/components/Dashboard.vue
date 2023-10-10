@@ -113,7 +113,7 @@ export default {
                 });
         },
         publishVideo(id){
-            axios.get(`https://new-app.test/api/reel/${id}/post`)
+            axios.get(`https://new-app.test/api/video/${id}/post`)
                 .then((response) => {
                     console.log(response.message);
                 });

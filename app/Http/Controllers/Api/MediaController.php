@@ -32,9 +32,39 @@ class MediaController extends Controller{
         return response()->json(['status' => $uploadStatus]);
     }
 
+    public function postVideo($id){
+
+        $pageId = Auth::user()->facebook_page_id;
+        $pageAccessToken = $this->getPageAccessToken($pageId);
+        $reel = Reel::find($id);
+        $videoPath = public_path('reels/'.$reel->video);
+        $file = $reel->video;
+        $fileSize = filesize($videoPath);
+
+        $initializeUpload = $this->initializeUpload($pageId, $pageAccessToken, $fileSize);
+
+
+        if(!empty($initializeUpload['video_id'])){
+            $video_id = $initializeUpload['video_id'];
+            $start_offset = $initializeUpload['start_offset'];
+            $end_offset = $initializeUpload['end_offset'];
+            $upload_session_id = $initializeUpload['upload_session_id'];
+
+            while ($start_offset < $end_offset){
+                $offsets = $this->uploadChunks($pageId, $pageAccessToken, $upload_session_id, $start_offset, $file, $videoPath);
+                $start_offset = $offsets['start_offset'];
+                $end_offset = $offsets['end_offset'];
+            }
+
+            $end_upload_session = $this->endUploadSession($pageId, $pageAccessToken, $upload_session_id);
+            return response()->json(['message' => 'Video uploaded'],200);
+        }
+
+    }
+
     public function postReel($id){
         $pageId = Auth::user()->facebook_page_id;
-        $pageAccessToken = $this->getPageAccessToken();
+        $pageAccessToken = $this->getPageAccessToken($pageId);
         $videoData = $this->initialUpload($pageId, $pageAccessToken);
 
         if($videoData){
@@ -54,10 +84,9 @@ class MediaController extends Controller{
         }
     }
 
-    private function getPageAccessToken(){
+    private function getPageAccessToken($facebook_page_id){
         $user_id = Auth::user()->facebook_id;
         $access_token = Auth::user()->access_token;
-        $facebook_page_id = Auth::user()->facebook_page_id;
         $api_url = "https://graph.facebook.com/$user_id/accounts?access_token=$access_token";
 
         $response = Http::get($api_url);
@@ -119,6 +148,40 @@ class MediaController extends Controller{
         ];
 
         return Http::post($url, $postData);
+
+    }
+
+    private function initializeUpload($pageId, $pageAccessToken, $fileSize){
+        $response = Http::post("https://graph-video.facebook.com/v18.0/{$pageId}/videos", [
+            'upload_phase' => 'start',
+            'access_token' => $pageAccessToken,
+            'file_size' => $fileSize,
+        ]);
+
+        return $response->json();
+
+    }
+
+    private function uploadChunks($page_id, $page_access_token, $upload_session_id, $start_offset, $file, $video_path){
+        $response = Http::post("https://graph-video.facebook.com/v18.0/{$page_id}/videos", [
+            'upload_phase' => 'transfer',
+            'upload_session_id' => $upload_session_id,
+            'access_token' => $page_access_token,
+            'start_offset' => $start_offset,
+            'video_file_chunk' => $video_path,
+        ]);
+
+        return $response->json();
+    }
+
+    public function endUploadSession($page_id, $page_access_token, $upload_session_id){
+        $response = Http::post("https://graph-video.facebook.com/v18.0/{$page_id}/videos", [
+            'upload_phase' => 'finish',
+            'access_token' => $page_access_token,
+            'upload_session_id' => $upload_session_id,
+        ]);
+
+        return $response->json();
 
     }
 

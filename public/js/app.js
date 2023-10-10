@@ -5159,7 +5159,7 @@ __webpack_require__.r(__webpack_exports__);
       });
     },
     publishVideo: function publishVideo(id) {
-      axios.get("https://new-app.test/api/reel/".concat(id, "/post")).then(function (response) {
+      axios.get("https://new-app.test/api/video/".concat(id, "/post")).then(function (response) {
         console.log(response.message);
       });
     }
