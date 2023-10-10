@@ -10,7 +10,7 @@ export default {
     methods: {
         fetchDataFromCallbackURL() {
             let code = this.$route.query.code;
-            axios.get('https://new-app.test/api/auth/facebook/user?code='+code)
+            axios.get('https://new-app.test/api/facebook/user?code='+code)
                 .then(response => {
                     Auth.login(response.data.token, response.data.user);
                     this.$parent.loggedUser = response.data.user;

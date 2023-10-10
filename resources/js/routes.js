@@ -14,7 +14,7 @@ const routes = [
         name: 'login'
     },
     {
-        path: '/api/auth/facebook/callback',
+        path: '/facebook/callback',
         component: LoginWithFacebook,
         name: 'LoginWithFacebook',
     },

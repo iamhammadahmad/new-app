@@ -5193,7 +5193,8 @@ function _asyncToGenerator(fn) { return function () { var self = this, args = ar
         return _regeneratorRuntime().wrap(function _callee$(_context) {
           while (1) switch (_context.prev = _context.next) {
             case 0:
-              axios__WEBPACK_IMPORTED_MODULE_0___default().get('https://new-app.test/api/auth/facebook/redirect').then(function (response) {
+              axios__WEBPACK_IMPORTED_MODULE_0___default().get('https://new-app.test/facebook/redirect').then(function (response) {
+                console.log(response.data.url);
                 window.location.href = response.data.url;
               });
             case 1:
@@ -5235,7 +5236,7 @@ __webpack_require__.r(__webpack_exports__);
     fetchDataFromCallbackURL: function fetchDataFromCallbackURL() {
       var _this = this;
       var code = this.$route.query.code;
-      axios.get('https://new-app.test/api/auth/facebook/user?code=' + code).then(function (response) {
+      axios.get('https://new-app.test/api/facebook/user?code=' + code).then(function (response) {
         _Auth__WEBPACK_IMPORTED_MODULE_0__["default"].login(response.data.token, response.data.user);
         _this.$parent.loggedUser = response.data.user;
         _this.$router.push('/');
@@ -5753,7 +5754,7 @@ var routes = [{
   component: _components_Login_vue__WEBPACK_IMPORTED_MODULE_3__["default"],
   name: 'login'
 }, {
-  path: '/api/auth/facebook/callback',
+  path: '/facebook/callback',
   component: _components_LoginWithFacebook_vue__WEBPACK_IMPORTED_MODULE_4__["default"],
   name: 'LoginWithFacebook'
 }, {

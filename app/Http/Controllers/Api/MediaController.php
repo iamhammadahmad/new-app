@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Reel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 
 class MediaController extends Controller{
 
@@ -32,108 +33,92 @@ class MediaController extends Controller{
     }
 
     public function postReel($id){
-        $pageAccessToken = Auth::user()->access_token;
-        $videoData = $this->initialUpload($pageAccessToken);
+        $pageId = Auth::user()->facebook_page_id;
+        $pageAccessToken = $this->getPageAccessToken();
+        $videoData = $this->initialUpload($pageId, $pageAccessToken);
 
         if($videoData){
+            $upload_url = $videoData['upload_url'];
+            $video_id = $videoData['video_id'];
+
+
             $reel = Reel::find($id);
-            $videoPath = asset('reels/'.$reel->video);
-            $fileSize = filesize($videoPath);
-            $uploadVideo = $this->uploadReel($videoData['video_url'],$pageAccessToken,$fileSize,$videoPath);
+            $videoPath = url(asset('reels/'.$reel->video));
+            $description = $reel->descrription;
+            $uploadVideo = $this->uploadReel($upload_url,$pageAccessToken,$videoPath);
 
             if($uploadVideo){
-                return $this->publish($pageAccessToken, $reel->video, $reel->description);
+                $published = $this->publish($pageId, $pageAccessToken, $video_id, $description);
+                return response()->json(['status' => $published ? 1:0]);
             }
         }
     }
 
-    private function initialUpload($pageAccessToken){
+    private function getPageAccessToken(){
+        $user_id = Auth::user()->facebook_id;
+        $access_token = Auth::user()->access_token;
+        $facebook_page_id = Auth::user()->facebook_page_id;
+        $api_url = "https://graph.facebook.com/$user_id/accounts?access_token=$access_token";
 
-        $url = "https://graph.facebook.com/v18.0/mmsoftwaretechnologies/video_reels";
+        $response = Http::get($api_url);
+        $responseBody = json_decode($response->getBody(), true);
+        $pages = $responseBody['data'];
 
-        $data = json_encode([
+        foreach ($pages as $page){
+            if($facebook_page_id == $page['id']){
+                $pages_access_token = $page['access_token'];
+                break;
+            }
+        }
+        return $pages_access_token;
+    }
+
+    private function initialUpload($pageId , $pageAccessToken){
+
+        $url = "https://graph.facebook.com/v18.0/{$pageId}/video_reels";
+
+        $data = [
             "upload_phase" => "start",
             "access_token" => $pageAccessToken
-        ]);
-
-        $ch = curl_init();
-
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/json'
-        ]);
-
-        $response = curl_exec($ch);
-        curl_close($ch);
-
-        if ($response === false) {
-            return false;
-        } else {
-            return $response;
-        }
-    }
-
-    private function uploadReel($uploadUrl, $pageAccessToken, $fileSize, $videoFilePath){
-
-        $ch = curl_init($uploadUrl);
-
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-
-        $headers = [
-            'Authorization: OAuth ' . $pageAccessToken,
-            'offset: 0',
-            'file_size: ' . $fileSize,
         ];
 
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        $config = [
+            'headers' => [
+                'Content-Type' => 'application/json',
+            ],
+        ];
 
-        $fileHandle = fopen($videoFilePath, 'rb');
-        curl_setopt($ch, CURLOPT_BINARYTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, fread($fileHandle, filesize($videoFilePath)));
-        fclose($fileHandle);
+        return $response = Http::post($url, $data, $config);
 
-        $response = curl_exec($ch);
-        curl_close($ch);
-
-        if ($response === false) {
-            return false;
-        } else {
-            return true;
-        }
     }
 
-    private function publish($pageAccessToken , $videoId, $description){
+    private function uploadReel($upload_url,$pageAccessToken,$videoPath){
 
-        $url = "https://graph.facebook.com/v18.0/mmsoftwaretechnologies/video_reels";
+        $authorization = 'OAuth '.$pageAccessToken;
+        $response = Http::withHeaders([
+            'Authorization' => $authorization,
+            'file_url' => $videoPath,
+        ])->post($upload_url);
 
+        if(isset($response['success']) && $response['success']){
+          return true;
+        }
+
+        return false;
+    }
+
+    private function publish($pageId, $pageAccessToken, $video_id, $description){
+
+        $url = "https://graph.facebook.com/v18.0/{$pageId}/video_reels";
         $postData = [
             'access_token' => $pageAccessToken,
-            'video_id' => $videoId,
+            'video_id' => $video_id,
             'upload_phase' => 'finish',
             'video_state' => 'PUBLISHED',
             'description' => $description,
         ];
 
-        $ch = curl_init();
-        $urlWithParams = $url . '?' . http_build_query($postData);
-
-        curl_setopt($ch, CURLOPT_URL, $urlWithParams);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-
-        $response = curl_exec($ch);
-        curl_close($ch);
-
-        if ($response === false) {
-            return false;
-        } else {
-            return true;
-        }
-
+        return Http::post($url, $postData);
 
     }
 

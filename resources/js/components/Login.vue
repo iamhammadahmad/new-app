@@ -25,10 +25,12 @@ import axios from 'axios';
 export default {
     setup() {
         const loginWithFacebook = async () => {
-            axios.get('https://new-app.test/api/auth/facebook/redirect')
+            axios.get('https://new-app.test/facebook/redirect')
             .then(response => {
+                console.log(response.data.url);
                 window.location.href = response.data.url;
             });
+
         };
 
         return {
