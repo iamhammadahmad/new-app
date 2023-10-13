@@ -11,6 +11,14 @@ use Illuminate\Support\Facades\Http;
 
 class MediaController extends Controller{
 
+    protected $fb;
+    public function __construct(){
+        $this->fb = new Facebook([
+            'app_id' => env('FACEBOOK_CLIENT_ID'),
+            'app_secret' => env('FACEBOOK_CLIENT_SECRET'),
+            'default_graph_version' => 'v18.0'
+        ]);
+    }
     public function reels(){
         $reels = Reel::orderByDesc('id')->get();
         return response()->json(['reels' => $reels],200);
@@ -42,19 +50,14 @@ class MediaController extends Controller{
     }
 
     private function postVideoToFacebookPage($pageId, $video){
-        $fb = new Facebook([
-            'app_id' => env('FACEBOOK_CLIENT_ID'),
-            'app_secret' => env('FACEBOOK_CLIENT_SECRET'),
-            'default_graph_version' => 'v18.0'
-        ]);
 
         $pageAccessToken = $this->getPageAccessToken($pageId);
         $videoPath = public_path('reels/'.$video->video);
 
-        $response = $fb->post($pageId.'/videos', [
+        $response = $this->fb->post($pageId.'/videos', [
             'title' => $video->title,
             'description' => $video->description,
-            'source' => $fb->videoToUpload($videoPath)
+            'source' => $this->fb->videoToUpload($videoPath)
         ],$pageAccessToken);
 
         $data = $response->getGraphNode();
@@ -63,9 +66,7 @@ class MediaController extends Controller{
     private function getPageAccessToken($facebook_page_id){
         $user_id = Auth::user()->facebook_id;
         $access_token = Auth::user()->access_token;
-        $api_url = "https://graph.facebook.com/$user_id/accounts?access_token=$access_token";
-
-        $response = Http::get($api_url);
+        $response = $this->fb->get($user_id.'/accounts',$access_token);
         $responseBody = json_decode($response->getBody(), true);
         $pages = $responseBody['data'];
 
